@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Metric / Imperial Unit Conversion</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+        <button id="themeToggle" class="theme-btn">🌙</button>
+
+      <div>
+        <div class="header-title">Metric / Imperial Unit Conversion</div>
+        <div class="header-sub">Quickly compare length, volume, and mass in both systems.</div>
+      </div>
+      <div class="chip">
+        <span class="chip-dot"></span>
+        <span>Live conversion</span>
+      </div>
+    </div>
+
+    <div class="input-row">
+      <input
+        id="valueInput"
+        type="number"
+        value="20"
+        min="0"
+        step="0.01"
+        aria-label="Base value for conversions"
+      />
+      <button id="convertBtn" type="button">
+        <span class="icon">⟳</span>
+        <span>Convert</span>
+      </button>
+    </div>
+
+    <div class="hint">
+      Enter a value once—each card shows both directions (metric → imperial and imperial → metric).
+    </div>
+
+    <div class="grid" id="conversionGrid"></div>
+
+    <div class="footer-note">
+      <span>Conversions use standard factors and are rounded to three decimals.</span>
+      <span class="accent">Metric ↔ Imperial at a glance.</span>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
