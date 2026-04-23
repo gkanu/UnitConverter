@@ -40,6 +40,7 @@ body {
     justify-content: center;
     background: var(--bg);
     color: var(--text);
+    padding: 16px;
 }
 
 .app {
@@ -60,6 +61,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
     margin-bottom: 20px;
     color: #f9fafb;
 }
@@ -139,6 +142,13 @@ body {
     filter: brightness(1.05);
     transform: translateY(-1px);
     box-shadow: 0 14px 30px rgba(124, 58, 237, 0.6);
+}
+
+.input-row button:focus-visible,
+.theme-btn:focus-visible,
+.input-row input[type="number"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .input-row button:active {
@@ -243,4 +253,22 @@ body {
 
 .theme-btn:hover {
     transform: translateY(-2px);
+}
+
+@media (max-width: 639px) {
+    .app {
+        padding: 18px;
+    }
+
+    .input-row {
+        flex-direction: column;
+    }
+
+    .input-row button {
+        justify-content: center;
+    }
+
+    .footer-note {
+        flex-direction: column;
+    }
 }

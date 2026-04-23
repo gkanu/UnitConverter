@@ -5,17 +5,24 @@ import { converters, format } from "./converter.js";
 const themeToggle = document.getElementById("themeToggle");
 const root = document.documentElement;
 
+function syncThemeToggle(isDark) {
+  themeToggle.textContent = isDark ? "☀️" : "🌙";
+  themeToggle.setAttribute("aria-pressed", String(isDark));
+  themeToggle.setAttribute("aria-label", isDark ? "Enable light mode" : "Enable dark mode");
+}
+
 // Load saved theme
 const savedTheme = localStorage.getItem("theme");
 if (savedTheme === "dark") {
   root.classList.add("dark");
-  themeToggle.textContent = "☀️";
 }
+
+syncThemeToggle(root.classList.contains("dark"));
 
 // Toggle theme
 themeToggle.addEventListener("click", () => {
   const isDark = root.classList.toggle("dark");
-  themeToggle.textContent = isDark ? "☀️" : "🌙";
+  syncThemeToggle(isDark);
   localStorage.setItem("theme", isDark ? "dark" : "light");
 });
 
@@ -37,7 +44,7 @@ function buildCards() {
         <div class="card-title">${cfg.label}</div>
         <div class="card-tag">${cfg.units[0]} ⇄ ${cfg.units[1]}</div>
       </div>
-      <div class="card-body" id="${key}Result"></div>
+      <div class="card-body" id="${key}Result" role="status" aria-live="polite"></div>
     `;
 
     grid.appendChild(card);
@@ -64,6 +71,7 @@ function convertAll() {
 }
 
 button.addEventListener("click", convertAll);
+input.addEventListener("input", convertAll);
 input.addEventListener("keydown", (e) => {
   if (e.key === "Enter") convertAll();
 });
