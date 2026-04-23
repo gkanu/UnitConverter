@@ -1,6 +1,14 @@
 import { converters } from "./converter.js";
 import { createAppState } from "./app-state.js";
-import { buildCards, populateCategoryFilter, syncThemeToggle, updateCardVisibility, updateConversions } from "./app-view.js";
+import {
+  buildCards,
+  populateCategoryFilter,
+  sortCards,
+  syncEmptyState,
+  syncThemeToggle,
+  updateCardVisibility,
+  updateConversions,
+} from "./app-view.js";
 
 export function initApp({ doc = document, storage = localStorage } = {}) {
   const themeToggle = doc.getElementById("themeToggle");
@@ -9,9 +17,12 @@ export function initApp({ doc = document, storage = localStorage } = {}) {
   const button = doc.getElementById("convertBtn");
   const categoryFilter = doc.getElementById("categoryFilter");
   const searchInput = doc.getElementById("searchInput");
+  const sortSelect = doc.getElementById("sortSelect");
+  const clearFiltersButton = doc.getElementById("clearFiltersBtn");
+  const emptyState = doc.getElementById("emptyState");
   const root = doc.documentElement;
 
-  if (!themeToggle || !input || !grid || !button || !categoryFilter || !searchInput || !root) {
+  if (!themeToggle || !input || !grid || !button || !categoryFilter || !searchInput || !sortSelect || !clearFiltersButton || !emptyState || !root) {
     return null;
   }
 
@@ -19,20 +30,23 @@ export function initApp({ doc = document, storage = localStorage } = {}) {
   const appState = createAppState({ entries, storage });
   input.value = appState.state.inputValue;
   searchInput.value = appState.state.searchQuery;
+  sortSelect.value = appState.state.sortKey;
 
   const cardElements = buildCards({
     doc,
     grid,
     entries,
-    getDirection: appState.getDirection,
-    onDirectionChange: (key, direction) => {
-      appState.setDirection(key, direction);
+    getUnitSelection: appState.getUnitSelection,
+    onUnitChange: (key, selection) => {
+      appState.setUnitSelection(key, selection);
       convertAll();
     },
   });
 
-  function updateCardVisibilityView() {
-    updateCardVisibility(cardElements, appState.matchesFilters);
+  function applyGridState() {
+    sortCards(grid, appState.sortEntries(entries), cardElements);
+    const visibleCount = updateCardVisibility(cardElements, appState.matchesFilters);
+    syncEmptyState(emptyState, visibleCount);
   }
 
   function convertAll() {
@@ -69,15 +83,28 @@ export function initApp({ doc = document, storage = localStorage } = {}) {
   });
   categoryFilter.addEventListener("change", () => {
     appState.setCategory(categoryFilter.value);
-    updateCardVisibilityView();
+    applyGridState();
   });
   searchInput.addEventListener("input", () => {
     appState.setSearchQuery(searchInput.value);
-    updateCardVisibilityView();
+    applyGridState();
+  });
+  sortSelect.addEventListener("change", () => {
+    appState.setSortKey(sortSelect.value);
+    applyGridState();
+  });
+  clearFiltersButton.addEventListener("click", () => {
+    appState.resetToolbarState();
+    input.value = appState.state.inputValue;
+    searchInput.value = appState.state.searchQuery;
+    categoryFilter.value = appState.state.category;
+    sortSelect.value = appState.state.sortKey;
+    applyGridState();
+    convertAll();
   });
 
   populateCategoryFilter(doc, categoryFilter, appState.categories, appState.state.category);
-  updateCardVisibilityView();
+  applyGridState();
   convertAll();
 
   return {
@@ -86,6 +113,8 @@ export function initApp({ doc = document, storage = localStorage } = {}) {
     button,
     categoryFilter,
     searchInput,
+    sortSelect,
+    clearFiltersButton,
     convertAll,
     cardElements,
   };
