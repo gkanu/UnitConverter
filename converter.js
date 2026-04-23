@@ -78,6 +78,19 @@ export const converters = {
 
 // --- Helpers ----------------------------------------------
 
+export function getConversion(cfg, value, direction = "metricToImperial") {
+    const result = cfg.convert(value);
+    const isMetricToImperial = direction === "metricToImperial";
+
+    return {
+        direction,
+        inputUnit: isMetricToImperial ? cfg.units[0] : cfg.units[1],
+        outputUnit: isMetricToImperial ? cfg.units[1] : cfg.units[0],
+        inputValue: value,
+        outputValue: isMetricToImperial ? result.metricToImperial : result.imperialToMetric
+    };
+}
+
 export function format(n) {
     return Number(n).toFixed(2);
 }
