@@ -166,6 +166,35 @@ body {
     margin-bottom: 14px;
 }
 
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.filter-select {
+    min-width: 180px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.filter-select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 .grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -312,5 +341,14 @@ body {
 
     .footer-note {
         flex-direction: column;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-select {
+        width: 100%;
     }
 }
