@@ -1,44 +1,6 @@
-import { converters, format, getConversion } from "./converter.js";
-
-const THEME_STORAGE_KEY = "theme";
-const FILTER_STORAGE_KEY = "converterCategoryFilter";
-const DIRECTION_STORAGE_PREFIX = "converterDirection:";
-
-function readStoredValue(storage, key) {
-  try {
-    return storage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredValue(storage, key, value) {
-  try {
-    storage.setItem(key, value);
-  } catch {
-    // Ignore unavailable storage and keep the UI working.
-  }
-}
-
-function createDirectionButton(doc, label, direction, onSelect) {
-  const buttonElement = doc.createElement("button");
-  buttonElement.type = "button";
-  buttonElement.className = "direction-btn";
-  buttonElement.textContent = label;
-  buttonElement.dataset.direction = direction;
-  buttonElement.addEventListener("click", () => onSelect(direction));
-  return buttonElement;
-}
-
-function setActiveDirection(cardState, direction) {
-  cardState.direction = direction;
-
-  cardState.directionButtons.forEach((buttonElement) => {
-    const isActive = buttonElement.dataset.direction === direction;
-    buttonElement.classList.toggle("is-active", isActive);
-    buttonElement.setAttribute("aria-pressed", String(isActive));
-  });
-}
+import { converters } from "./converter.js";
+import { createAppState } from "./app-state.js";
+import { buildCards, populateCategoryFilter, syncThemeToggle, updateCardVisibility, updateConversions } from "./app-view.js";
 
 export function initApp({ doc = document, storage = localStorage } = {}) {
   const themeToggle = doc.getElementById("themeToggle");
@@ -46,151 +8,31 @@ export function initApp({ doc = document, storage = localStorage } = {}) {
   const grid = doc.getElementById("conversionGrid");
   const button = doc.getElementById("convertBtn");
   const categoryFilter = doc.getElementById("categoryFilter");
+  const searchInput = doc.getElementById("searchInput");
   const root = doc.documentElement;
 
-  if (!themeToggle || !input || !grid || !button || !categoryFilter || !root) {
+  if (!themeToggle || !input || !grid || !button || !categoryFilter || !searchInput || !root) {
     return null;
   }
 
-  const cardElements = new Map();
   const entries = Object.entries(converters);
+  const appState = createAppState({ entries, storage });
+  input.value = appState.state.inputValue;
+  searchInput.value = appState.state.searchQuery;
 
-  function syncThemeToggle(isDark) {
-    themeToggle.textContent = isDark ? "☀️" : "🌙";
-    themeToggle.setAttribute("aria-pressed", String(isDark));
-    themeToggle.setAttribute("aria-label", isDark ? "Enable light mode" : "Enable dark mode");
-  }
+  const cardElements = buildCards({
+    doc,
+    grid,
+    entries,
+    getDirection: appState.getDirection,
+    onDirectionChange: (key, direction) => {
+      appState.setDirection(key, direction);
+      convertAll();
+    },
+  });
 
-  function updateCardVisibility() {
-    const activeCategory = categoryFilter.value;
-
-    cardElements.forEach((cardState) => {
-      cardState.card.hidden = activeCategory !== "all" && cardState.cfg.category !== activeCategory;
-    });
-  }
-
-  function populateCategoryFilter() {
-    const categories = [...new Set(entries.map(([, cfg]) => cfg.category))];
-
-    categories.forEach((category) => {
-      const option = doc.createElement("option");
-      option.value = category;
-      option.textContent = category;
-      categoryFilter.append(option);
-    });
-
-    const storedCategory = readStoredValue(storage, FILTER_STORAGE_KEY);
-    if (storedCategory && [...categoryFilter.options].some((option) => option.value === storedCategory)) {
-      categoryFilter.value = storedCategory;
-    }
-  }
-
-  function buildCards() {
-    grid.replaceChildren();
-    cardElements.clear();
-
-    entries.forEach(([key, cfg]) => {
-      const card = doc.createElement("div");
-      card.className = "card";
-      card.dataset.converter = key;
-      card.dataset.category = cfg.category;
-
-      const header = doc.createElement("div");
-      header.className = "card-header";
-
-      const title = doc.createElement("div");
-      title.className = "card-title";
-      title.textContent = cfg.label;
-
-      const tag = doc.createElement("div");
-      tag.className = "card-tag";
-      tag.textContent = `${cfg.units[0]} ⇄ ${cfg.units[1]}`;
-
-      header.append(title, tag);
-
-      const controls = doc.createElement("div");
-      controls.className = "direction-group";
-      controls.setAttribute("role", "group");
-      controls.setAttribute("aria-label", `${cfg.label} conversion direction`);
-
-      const resultBody = doc.createElement("div");
-      resultBody.className = "card-body";
-      resultBody.id = `${key}Result`;
-      resultBody.setAttribute("role", "status");
-      resultBody.setAttribute("aria-live", "polite");
-
-      const primaryLine = doc.createElement("p");
-      primaryLine.className = "result-line";
-
-      const inputValue = doc.createElement("strong");
-      const inputUnit = doc.createElement("span");
-      const equalsText = doc.createElement("span");
-      equalsText.textContent = " = ";
-      const outputValue = doc.createElement("strong");
-      const outputUnit = doc.createElement("span");
-
-      primaryLine.append(inputValue, doc.createTextNode(" "), inputUnit, equalsText, outputValue, doc.createTextNode(" "), outputUnit);
-
-      const secondaryLine = doc.createElement("p");
-      secondaryLine.className = "result-line result-line-secondary";
-
-      const reverseLabel = doc.createElement("span");
-      reverseLabel.className = "result-label";
-      reverseLabel.textContent = "Reverse";
-      const reverseValue = doc.createElement("span");
-
-      secondaryLine.append(reverseLabel, doc.createTextNode(": "), reverseValue);
-      resultBody.append(primaryLine, secondaryLine);
-
-      const storedDirection = readStoredValue(storage, `${DIRECTION_STORAGE_PREFIX}${key}`);
-      const initialDirection = storedDirection === "imperialToMetric" ? "imperialToMetric" : "metricToImperial";
-      const cardState = {
-        key,
-        card,
-        cfg,
-        direction: initialDirection,
-        directionButtons: [],
-        nodes: {
-          inputValue,
-          inputUnit,
-          outputValue,
-          outputUnit,
-          reverseValue,
-        },
-      };
-
-      const metricToImperialButton = createDirectionButton(
-        doc,
-        `${cfg.units[0]} → ${cfg.units[1]}`,
-        "metricToImperial",
-        (direction) => {
-          setActiveDirection(cardState, direction);
-          writeStoredValue(storage, `${DIRECTION_STORAGE_PREFIX}${key}`, direction);
-          convertAll();
-        }
-      );
-      const imperialToMetricButton = createDirectionButton(
-        doc,
-        `${cfg.units[1]} → ${cfg.units[0]}`,
-        "imperialToMetric",
-        (direction) => {
-          setActiveDirection(cardState, direction);
-          writeStoredValue(storage, `${DIRECTION_STORAGE_PREFIX}${key}`, direction);
-          convertAll();
-        }
-      );
-
-      cardState.directionButtons = [metricToImperialButton, imperialToMetricButton];
-      setActiveDirection(cardState, cardState.direction);
-
-      controls.append(metricToImperialButton, imperialToMetricButton);
-      card.append(header, controls, resultBody);
-
-      grid.appendChild(card);
-      cardElements.set(key, cardState);
-    });
-
-    updateCardVisibility();
+  function updateCardVisibilityView() {
+    updateCardVisibility(cardElements, appState.matchesFilters);
   }
 
   function convertAll() {
@@ -199,46 +41,43 @@ export function initApp({ doc = document, storage = localStorage } = {}) {
       return;
     }
 
-    cardElements.forEach((cardState) => {
-      const active = getConversion(cardState.cfg, base, cardState.direction);
-      const reverseDirection = cardState.direction === "metricToImperial" ? "imperialToMetric" : "metricToImperial";
-      const reverse = getConversion(cardState.cfg, base, reverseDirection);
-
-      cardState.nodes.inputValue.textContent = format(active.inputValue);
-      cardState.nodes.inputUnit.textContent = active.inputUnit;
-      cardState.nodes.outputValue.textContent = format(active.outputValue);
-      cardState.nodes.outputUnit.textContent = active.outputUnit;
-      cardState.nodes.reverseValue.textContent = `${format(reverse.inputValue)} ${reverse.inputUnit} = ${format(reverse.outputValue)} ${reverse.outputUnit}`;
-    });
+    updateConversions(cardElements, base);
   }
 
-  const savedTheme = readStoredValue(storage, THEME_STORAGE_KEY);
-  if (savedTheme === "dark") {
+  if (appState.state.theme === "dark") {
     root.classList.add("dark");
   }
 
-  syncThemeToggle(root.classList.contains("dark"));
+  syncThemeToggle(themeToggle, root.classList.contains("dark"));
 
   themeToggle.addEventListener("click", () => {
-    const isDark = root.classList.toggle("dark");
-    syncThemeToggle(isDark);
-    writeStoredValue(storage, THEME_STORAGE_KEY, isDark ? "dark" : "light");
+    const theme = appState.toggleTheme();
+    const isDark = theme === "dark";
+    root.classList.toggle("dark", isDark);
+    syncThemeToggle(themeToggle, isDark);
   });
 
   button.addEventListener("click", convertAll);
-  input.addEventListener("input", convertAll);
+  input.addEventListener("input", () => {
+    appState.setInputValue(input.value);
+    convertAll();
+  });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       convertAll();
     }
   });
   categoryFilter.addEventListener("change", () => {
-    writeStoredValue(storage, FILTER_STORAGE_KEY, categoryFilter.value);
-    updateCardVisibility();
+    appState.setCategory(categoryFilter.value);
+    updateCardVisibilityView();
+  });
+  searchInput.addEventListener("input", () => {
+    appState.setSearchQuery(searchInput.value);
+    updateCardVisibilityView();
   });
 
-  populateCategoryFilter();
-  buildCards();
+  populateCategoryFilter(doc, categoryFilter, appState.categories, appState.state.category);
+  updateCardVisibilityView();
   convertAll();
 
   return {
@@ -246,6 +85,7 @@ export function initApp({ doc = document, storage = localStorage } = {}) {
     grid,
     button,
     categoryFilter,
+    searchInput,
     convertAll,
     cardElements,
   };

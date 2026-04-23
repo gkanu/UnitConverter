@@ -16,6 +16,7 @@ function createAppDom() {
           <select id="categoryFilter">
             <option value="all">All categories</option>
           </select>
+          <input id="searchInput" type="search" />
           <div id="conversionGrid"></div>
         </main>
       </body>
@@ -67,4 +68,29 @@ test("category filter hides nonmatching cards and saves the selection", () => {
 
   assert.deepEqual(visibleConverters, ["pressure", "energy", "force"]);
   assert.equal(dom.window.localStorage.getItem("converterCategoryFilter"), "Physics");
+});
+
+test("search filter narrows visible cards using labels and units", () => {
+  const dom = createAppDom();
+  const app = initApp({ doc: dom.window.document, storage: dom.window.localStorage });
+
+  app.searchInput.value = "psi";
+  app.searchInput.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+
+  const visibleCards = [...dom.window.document.querySelectorAll(".card")].filter((card) => !card.hidden);
+  const visibleConverters = visibleCards.map((card) => card.dataset.converter);
+
+  assert.deepEqual(visibleConverters, ["pressure"]);
+  assert.equal(dom.window.localStorage.getItem("converterSearchQuery"), "psi");
+});
+
+test("stored input value is restored on initialization", () => {
+  const dom = createAppDom();
+  dom.window.localStorage.setItem("converterInputValue", "42");
+
+  const app = initApp({ doc: dom.window.document, storage: dom.window.localStorage });
+  const lengthResult = dom.window.document.querySelector('[data-converter="length"] .result-line');
+
+  assert.equal(app.input.value, "42");
+  assert.equal(normalizeText(lengthResult.textContent), "42.00 meters = 137.80 feet");
 });
